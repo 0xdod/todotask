@@ -15,24 +15,7 @@ type Server struct {
 	Store
 }
 
-type TODO struct {
-	ID      int    `json:"id"`
-	Title   string `json:"title"`
-	Content string `json:"content"`
-}
-
-type TodoOptions struct {
-	Title   string
-	Content string
-}
-
-func (t *TODO) ToJSON() string {
-	data, err := json.Marshal(t)
-	if err != nil {
-		panic(err)
-	}
-	return string(data)
-}
+type M map[string]interface{}
 
 func NewServer(store Store) *Server {
 	s := &Server{Store: store}
@@ -73,10 +56,7 @@ func (s *Server) getTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := json.NewEncoder(w).Encode(&todo); err != nil {
-		w.WriteHeader(500)
-		fmt.Fprint(w, err.Error())
-	}
+	JSONResponse(w, http.StatusOK, todo)
 }
 
 func (s *Server) createTodo(w http.ResponseWriter, r *http.Request) {
@@ -93,13 +73,12 @@ func (s *Server) createTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
-	fmt.Fprint(w, requestData.ToJSON())
+	JSONResponse(w, http.StatusCreated, requestData)
 }
 
 func (s *Server) searchTodoContent(w http.ResponseWriter, r *http.Request) {
 	searchTerm := strings.ToLower(r.FormValue("q"))
-	todos, err := s.Store.Filter(TodoOptions{searchTerm, searchTerm})
+	todos, err := s.Store.FilterTodos(TodoOptions{searchTerm, searchTerm})
 	if err != nil {
 		w.WriteHeader(500)
 		fmt.Fprint(w, err.Error())
@@ -114,7 +93,22 @@ func (s *Server) searchTodoContent(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) deleteTodo(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, _ := strconv.Atoi(vars["id"])
+
+	if err := s.Store.DeleteTodo(id); err != nil {
+		w.WriteHeader(500)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	JSONResponse(w, http.StatusOK, M{"status": "success", "message": "todo with id " + vars["id"] + "deleted successfully"})
 }
 
 func (s *Server) updateTodoContent(w http.ResponseWriter, r *http.Request) {
+}
+
+func JSONResponse(w http.ResponseWriter, status int, body interface{}) {
+	w.Header().Add("content-type", "application/json")
+	w.WriteHeader(status)
+	json.NewEncoder(w).Encode(&body)
 }

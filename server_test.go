@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"strings"
 	"testing"
 )
@@ -26,7 +25,7 @@ func TestGetTodos(t *testing.T) {
 	}
 
 	assertStatusCode(t, response.Code, http.StatusOK)
-	assertDeepEqual(t, testStore.todos, got)
+	assertDeepEqual(t, got, testStore.todos)
 }
 
 func TestGetTodoByID(t *testing.T) {
@@ -45,15 +44,7 @@ func TestGetTodoByID(t *testing.T) {
 	}
 
 	assertStatusCode(t, response.Code, http.StatusOK)
-	assertDeepEqual(t, testStore.todos[0], got)
-}
-
-func assertDeepEqual(t testing.TB, got, want interface{}) {
-	t.Helper()
-
-	if !reflect.DeepEqual(got, want) {
-		t.Errorf("Expected %v, but got %v", want, got)
-	}
+	assertDeepEqual(t, got, testStore.todos[0])
 }
 
 func TestCreateTodos(t *testing.T) {
@@ -98,4 +89,30 @@ func TestSearchTodoContent(t *testing.T) {
 
 	assertStatusCode(t, response.Code, http.StatusOK)
 	assertDeepEqual(t, got, []TODO{testStore.todos[0]})
+}
+
+func TestDeleteTodo(t *testing.T) {
+	testStore := newTestStore()
+	server := NewServer(testStore)
+	request := newDeleteRequest(fmt.Sprintf("/todos/%d", testStore.todos[0].ID))
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, request)
+
+	got := M{}
+
+	err := json.NewDecoder(response.Body).Decode(&got)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assertStatusCode(t, response.Code, http.StatusOK)
+
+	if status, ok := got["status"].(string); ok && status != "success" {
+		t.Errorf("Expected success status, but got %s", status)
+	}
+
+	if tl := len(testStore.todos); tl != 1 {
+		t.Errorf("Expected length of 1, but got %d", tl)
+	}
 }
