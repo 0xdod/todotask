@@ -1,6 +1,8 @@
 package main
 
 import (
+	"strings"
+
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -33,14 +35,35 @@ func (ps *PgStore) CreateTodo(todo *TODO) error {
 	return ps.DB.Create(todo).Error
 }
 
-func (ps *PgStore) FilterTodos(TodoOptions) ([]TODO, error) {
-	panic("not implemented") // TODO: Implement
+func (ps *PgStore) FilterTodos(opt TodoOptions) ([]TODO, error) {
+	todos := []TODO{}
+
+	stmt := "SELECT * FROM todos WHERE"
+
+	if t := opt.Title; t != "" {
+		stmt += " title LIKE ? OR "
+	}
+
+	if c := opt.Content; c != "" {
+		stmt += " content LIKE ? "
+	}
+
+	return todos, ps.DB.Raw(stmt, "%"+strings.ToLower(opt.Title)+"%", "%"+strings.ToLower(opt.Content)+"%").Scan(&todos).Error
 }
 
 func (ps *PgStore) UpdateTodo(id int, opt TodoOptions) (*TODO, error) {
-	panic("not implemented") // TODO: Implement
+	todo := &TODO{ID: id}
+	todoUpdates := &TODO{}
+	if t := opt.Title; t != "" {
+		todoUpdates.Title = t
+	}
+	if c := opt.Content; c != "" {
+		todoUpdates.Content = c
+	}
+	return todo, ps.DB.Model(todo).Updates(todoUpdates).Error
+
 }
 
 func (ps *PgStore) DeleteTodo(id int) error {
-	panic("not implemented") // TODO: Implement
+	return ps.DB.Delete(&TODO{}, id).Error
 }

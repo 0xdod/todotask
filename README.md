@@ -19,5 +19,8 @@ This is a coding task to implement a web service that allows a user to manage a 
 To test the program locally, make sure you have Go installed on your machine and PostgreSQL database server.
 - clone this repo
 - from the terminal, run `go build` in the root directory
+- make sure you have postgres running locally and you have set up the database
 - execute the built binary and test it using curl or your favorite API testing tool. 
+
+Make sure to set appropriate env variables for the database connection to be made successfully, check the `.env.example` file for the required variables
 

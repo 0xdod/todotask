@@ -95,7 +95,7 @@ func (s *Server) deleteTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	JSONResponse(w, http.StatusOK, M{"status": "success",
-		"message": "todo with id " + vars["id"] + "deleted successfully"})
+		"message": "todo with id " + vars["id"] + " deleted successfully"})
 }
 
 func (s *Server) updateTodoContent(w http.ResponseWriter, r *http.Request) {
