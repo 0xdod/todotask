@@ -52,7 +52,6 @@ func TestCreateTodos(t *testing.T) {
 
 	todo := `
 {
-    "id": 3,
 	"title": "Money",
 	"content": "kudi"
 }
@@ -115,4 +114,32 @@ func TestDeleteTodo(t *testing.T) {
 	if tl := len(testStore.todos); tl != 1 {
 		t.Errorf("Expected length of 1, but got %d", tl)
 	}
+}
+
+func TestUpdateTodo(t *testing.T) {
+	todoUpdate := `
+{
+    "title": "Change",
+	"content": "Change is constant"
+}
+`
+	testStore := newTestStore()
+	server := NewServer(testStore)
+	request := newPutRequest(fmt.Sprintf("/todos/%d", testStore.todos[0].ID), strings.NewReader(todoUpdate))
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, request)
+
+	got := TODO{}
+
+	err := json.NewDecoder(response.Body).Decode(&got)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assertStatusCode(t, response.Code, http.StatusOK)
+	if title := got.Title; title != "Change" {
+		t.Errorf("Expected %s, but got %s", "Change", title)
+	}
+	assertDeepEqual(t, got, testStore.todos[0])
 }

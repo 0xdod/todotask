@@ -1,11 +1,9 @@
 package main
 
 import (
-	"errors"
 	"io"
 	"net/http"
 	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -26,71 +24,34 @@ func assertDeepEqual(t testing.TB, got, want interface{}) {
 }
 
 func newGetRequest(url string) *http.Request {
-	req, _ := http.NewRequest("GET", url, nil)
-	return req
+	return newHTTPRequest("GET", url, nil)
+}
+func newDeleteRequest(url string) *http.Request {
+	return newHTTPRequest("DELETE", url, nil)
 }
 
-func newDeleteRequest(url string) *http.Request {
-	req, _ := http.NewRequest("DELETE", url, nil)
-	return req
+func newPutRequest(url string, body io.Reader) *http.Request {
+	return newHTTPRequest("PUT", url, body)
 }
 
 func newPostRequest(url string, body io.Reader) *http.Request {
-	req, _ := http.NewRequest("POST", url, body)
-	return req
+	return newHTTPRequest("POST", url, body)
 }
 
-type testStore struct {
-	todos []TODO
+func newHTTPRequest(method, url string, body io.Reader) *http.Request {
+	r, _ := http.NewRequest(method, url, body)
+	r.Header.Set("content-type", "application/json")
+	return r
 }
 
-func newTestStore() *testStore {
-	testTodos := []TODO{
-		{1, "Hello", "hello world"},
-		{2, "Hi", "hi world"},
+func newTestStore() *InMemStore {
+	testTodos := []TODO{}
+	m := map[string]string{
+		"Hello": "hello world",
+		"Hi":    "hi world",
 	}
-	return &testStore{testTodos}
-}
-
-func (ts *testStore) GetTodoByID(id int) (*TODO, error) {
-	for _, todo := range ts.todos {
-		if todo.ID == id {
-			return &todo, nil
-		}
+	for k, v := range m {
+		testTodos = append(testTodos, *NewTodo(k, v))
 	}
-	return nil, errors.New("Object not found")
-}
-
-func (ts *testStore) GetTodos() ([]TODO, error) {
-	return ts.todos, nil
-}
-
-func (ts *testStore) CreateTodo(t *TODO) error {
-	ts.todos = append(ts.todos, *t)
-	return nil
-}
-
-func (ts *testStore) FilterTodos(opt TodoOptions) ([]TODO, error) {
-	title := strings.ToLower(opt.Title)
-	content := strings.ToLower(opt.Content)
-	todos := []TODO{}
-
-	for _, todo := range ts.todos {
-		if strings.Contains(todo.Title, title) || strings.Contains(todo.Content, content) {
-			todos = append(todos, todo)
-		}
-	}
-	return todos, nil
-}
-
-func (ts *testStore) DeleteTodo(id int) error {
-	for i, todo := range ts.todos {
-		if todo.ID == id {
-			before := ts.todos[:i]
-			after := ts.todos[i+1:]
-			ts.todos = append(before, after...)
-			return nil
-		}
-	}
-	return errors.New("Object not found")
+	return &InMemStore{testTodos}
 }

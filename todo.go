@@ -1,11 +1,20 @@
 package main
 
-import "encoding/json"
+import (
+	"encoding/json"
+)
 
 type TODO struct {
-	ID      int    `json:"id"`
+	ID      int    `json:"id" gorm:"primaryKey"`
 	Title   string `json:"title"`
 	Content string `json:"content"`
+}
+
+func NewTodo(title, content string) *TODO {
+	return &TODO{
+		Title:   title,
+		Content: content,
+	}
 }
 
 type TodoOptions struct {

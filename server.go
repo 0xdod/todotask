@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -38,10 +39,7 @@ func (s *Server) getTodoList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := json.NewEncoder(w).Encode(&todos); err != nil {
-		w.WriteHeader(500)
-		fmt.Fprint(w, err.Error())
-	}
+	JSONResponse(w, http.StatusOK, todos)
 }
 
 func (s *Server) getTodo(w http.ResponseWriter, r *http.Request) {
@@ -55,13 +53,12 @@ func (s *Server) getTodo(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, err.Error())
 		return
 	}
-
 	JSONResponse(w, http.StatusOK, todo)
 }
 
 func (s *Server) createTodo(w http.ResponseWriter, r *http.Request) {
 	requestData := TODO{}
-	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
+	if err := parseJSON(r, &requestData); err != nil {
 		w.WriteHeader(400)
 		fmt.Fprint(w, err.Error())
 		return
@@ -85,11 +82,7 @@ func (s *Server) searchTodoContent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := json.NewEncoder(w).Encode(&todos); err != nil {
-		w.WriteHeader(500)
-		fmt.Fprint(w, err.Error())
-	}
-
+	JSONResponse(w, http.StatusOK, todos)
 }
 
 func (s *Server) deleteTodo(w http.ResponseWriter, r *http.Request) {
@@ -101,14 +94,43 @@ func (s *Server) deleteTodo(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprint(w, err.Error())
 		return
 	}
-	JSONResponse(w, http.StatusOK, M{"status": "success", "message": "todo with id " + vars["id"] + "deleted successfully"})
+	JSONResponse(w, http.StatusOK, M{"status": "success",
+		"message": "todo with id " + vars["id"] + "deleted successfully"})
 }
 
 func (s *Server) updateTodoContent(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	id, _ := strconv.Atoi(vars["id"])
+	opt := TodoOptions{}
+
+	if err := parseJSON(r, &opt); err != nil {
+		w.WriteHeader(400)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	todo, err := s.Store.UpdateTodo(id, opt)
+
+	if err != nil {
+		w.WriteHeader(500)
+		fmt.Fprint(w, err.Error())
+		return
+	}
+	JSONResponse(w, http.StatusOK, todo)
 }
 
 func JSONResponse(w http.ResponseWriter, status int, body interface{}) {
 	w.Header().Add("content-type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(&body)
+
+	err := json.NewEncoder(w).Encode(&body)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func parseJSON(r *http.Request, d interface{}) error {
+	if r.Header.Get("content-type") != "application/json" {
+		return errors.New("invalid content-type")
+	}
+	return json.NewDecoder(r.Body).Decode(d)
 }
