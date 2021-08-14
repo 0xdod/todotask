@@ -14,3 +14,4 @@ This is a web service that allows a user to:
 - [GET] /todos -> Fetches all todo list items
 - [GET] /todos/:id -> Fetches a particular todo item by id
 - [POST] /todos -> Create todo
+- [GET] /todos/search?q=search_term -. Searches for todo entries with the given search term

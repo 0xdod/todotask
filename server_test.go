@@ -2,39 +2,18 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 )
 
-type testStore struct {
-	todos []TODO
-}
-
-func (ts *testStore) GetTodoByID(id int) (*TODO, error) {
-	for _, todo := range ts.todos {
-		if todo.ID == id {
-			return &todo, nil
-		}
-	}
-	return nil, errors.New("Object not found")
-}
-
-func (ts *testStore) GetTodos() ([]TODO, error) {
-	return ts.todos, nil
-}
-
 func TestGetTodos(t *testing.T) {
-	testTodos := []TODO{
-		{1, "Hello", "hello world"},
-		{2, "Hi", "hi world"},
-	}
-	testStore := &testStore{testTodos}
+	testStore := newTestStore()
 	server := NewServer(testStore)
-	request, _ := http.NewRequest("GET", "/todos", nil)
+	request := newGetRequest("/todos")
 	response := httptest.NewRecorder()
 	server.ServeHTTP(response, request)
 
@@ -46,23 +25,17 @@ func TestGetTodos(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(testStore.todos, got) {
-		t.Errorf("Expected %v, got %v", testStore.todos, got)
-	}
-
 	assertStatusCode(t, response.Code, http.StatusOK)
+	assertDeepEqual(t, testStore.todos, got)
 }
 
 func TestGetTodoByID(t *testing.T) {
-	testTodos := []TODO{
-		{1, "Hello", "hello world"},
-		{2, "Hi", "hi world"},
-	}
-	testStore := &testStore{testTodos}
+	testStore := newTestStore()
 	server := NewServer(testStore)
-	request, _ := http.NewRequest("GET", fmt.Sprintf("/todos/%d", testStore.todos[0].ID), nil)
+	request := newGetRequest(fmt.Sprintf("/todos/%d", testStore.todos[0].ID))
 	response := httptest.NewRecorder()
 	server.ServeHTTP(response, request)
+
 	got := TODO{}
 
 	err := json.NewDecoder(response.Body).Decode(&got)
@@ -71,8 +44,58 @@ func TestGetTodoByID(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !reflect.DeepEqual(testStore.todos[0], got) {
-		t.Errorf("Expected %v, got %v", testStore.todos[0], got)
-	}
 	assertStatusCode(t, response.Code, http.StatusOK)
+	assertDeepEqual(t, testStore.todos[0], got)
+}
+
+func assertDeepEqual(t testing.TB, got, want interface{}) {
+	t.Helper()
+
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("Expected %v, but got %v", want, got)
+	}
+}
+
+func TestCreateTodos(t *testing.T) {
+	testStore := newTestStore()
+
+	todo := `
+{
+    "id": 3,
+	"title": "Money",
+	"content": "kudi"
+}
+`
+	request := newPostRequest("/todos", strings.NewReader(todo))
+	response := httptest.NewRecorder()
+	server := NewServer(testStore)
+	server.ServeHTTP(response, request)
+	got := TODO{}
+	err := json.NewDecoder(response.Body).Decode(&got)
+	if err != nil {
+		t.Fatalf("Could not parse json: %v", err)
+	}
+
+	assertStatusCode(t, response.Code, http.StatusCreated)
+	if len(testStore.todos) != 3 {
+		t.Errorf("Expected list length of 3, but got %d", len(testStore.todos))
+	}
+	assertDeepEqual(t, got, testStore.todos[2])
+}
+
+func TestSearchTodoContent(t *testing.T) {
+	testStore := newTestStore()
+	server := NewServer(testStore)
+	request := newGetRequest("/todos/search?q=hello")
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, request)
+
+	got := []TODO{}
+
+	if err := json.NewDecoder(response.Body).Decode(&got); err != nil {
+		t.Fatal(err)
+	}
+
+	assertStatusCode(t, response.Code, http.StatusOK)
+	assertDeepEqual(t, got, []TODO{testStore.todos[0]})
 }

@@ -5,6 +5,8 @@ import "errors"
 type Store interface {
 	GetTodos() ([]TODO, error)
 	GetTodoByID(id int) (*TODO, error)
+	CreateTodo(*TODO) error
+	Filter(TodoOptions) ([]TODO, error)
 }
 
 type InMemStore struct {
@@ -25,4 +27,12 @@ func (im *InMemStore) GetTodoByID(id int) (*TODO, error) {
 		}
 	}
 	return nil, errors.New("Object not found")
+}
+
+func (im *InMemStore) CreateTodo(t *TODO) error {
+	return nil
+}
+
+func (im *InMemStore) Filter(t *TODO) error {
+	return nil
 }
