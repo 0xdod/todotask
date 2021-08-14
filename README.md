@@ -9,3 +9,8 @@ This is a web service that allows a user to:
 ## Requirements
 - Go >= 1.16
 - PostgreSQL server 13
+
+## Endpoints
+- [GET] /todos -> Fetches all todo list items
+- [GET] /todos/:id -> Fetches a particular todo item by id
+- [POST] /todos -> Create todo
