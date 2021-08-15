@@ -20,7 +20,7 @@ type M map[string]interface{}
 
 func NewServer(store Store) *Server {
 	s := &Server{Store: store}
-	router := mux.NewRouter()
+	router := mux.NewRouter().StrictSlash(true)
 	router.HandleFunc("/todos", s.getTodoList).Methods("GET")
 	router.HandleFunc("/todos", s.createTodo).Methods("POST")
 	router.HandleFunc("/todos/search", s.searchTodoContent).Methods("GET")

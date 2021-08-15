@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 
 	"gorm.io/driver/postgres"
@@ -38,17 +39,32 @@ func (ps *PgStore) CreateTodo(todo *TODO) error {
 func (ps *PgStore) FilterTodos(opt TodoOptions) ([]TODO, error) {
 	todos := []TODO{}
 
-	stmt := "SELECT * FROM todos WHERE"
+	stmt := "SELECT * FROM todos"
+
+	conditions, args := []string{}, []interface{}{} // not using position 0
 
 	if t := opt.Title; t != "" {
-		stmt += " title LIKE ? OR "
+		t = "%" + strings.ToLower(t) + "%"
+		conditions, args = append(conditions, "title"), append(args, t)
 	}
 
 	if c := opt.Content; c != "" {
-		stmt += " content LIKE ? "
+		c = "%" + strings.ToLower(c) + "%"
+		conditions, args = append(conditions, "content"), append(args, c)
 	}
 
-	return todos, ps.DB.Raw(stmt, "%"+strings.ToLower(opt.Title)+"%", "%"+strings.ToLower(opt.Content)+"%").Scan(&todos).Error
+	if l := len(conditions); l > 0 && len(args) > 0 {
+		stmt += " WHERE "
+
+		for i, cond := range conditions {
+			stmt += fmt.Sprintf(" %s LIKE ? ", cond)
+			if i < l-1 {
+				stmt += " OR "
+			}
+		}
+	}
+
+	return todos, ps.DB.Raw(stmt, args...).Scan(&todos).Error
 }
 
 func (ps *PgStore) UpdateTodo(id int, opt TodoOptions) (*TODO, error) {
@@ -57,11 +73,12 @@ func (ps *PgStore) UpdateTodo(id int, opt TodoOptions) (*TODO, error) {
 	if t := opt.Title; t != "" {
 		todoUpdates.Title = t
 	}
+
 	if c := opt.Content; c != "" {
 		todoUpdates.Content = c
 	}
-	return todo, ps.DB.Model(todo).Updates(todoUpdates).Error
 
+	return todo, ps.DB.Model(todo).Updates(todoUpdates).Error
 }
 
 func (ps *PgStore) DeleteTodo(id int) error {
